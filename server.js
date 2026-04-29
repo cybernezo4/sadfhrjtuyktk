@@ -4,49 +4,51 @@ const { spawn } = require('child_process');
 const app = express();
 app.use(express.json());
 
-let botProcess = null;
+let bot = null;
+let logs = [];
 
 // 🔥 START
 app.post('/start', (req, res) => {
-  if (botProcess) return res.send("Bot déjà lancé");
+  if (bot) return res.sendStatus(200);
 
-  botProcess = spawn('node', ['bot.js']);
+  bot = spawn('node', ['bot.js']);
 
-  botProcess.stdout.on('data', data => {
-    console.log(`[BOT] ${data}`);
+  bot.stdout.on('data', data => {
+    logs.push(data.toString());
+    if (logs.length > 50) logs.shift();
   });
 
-  botProcess.stderr.on('data', data => {
-    console.log(`[ERROR] ${data}`);
-  });
-
-  res.send("Bot démarré");
+  res.sendStatus(200);
 });
 
 // ⛔ STOP
 app.post('/stop', (req, res) => {
-  if (!botProcess) return res.send("Bot déjà arrêté");
-
-  botProcess.kill();
-  botProcess = null;
-
-  res.send("Bot arrêté");
+  if (bot) bot.kill();
+  bot = null;
+  res.sendStatus(200);
 });
 
 // 🔄 RESTART
 app.post('/restart', (req, res) => {
-  if (botProcess) botProcess.kill();
+  if (bot) bot.kill();
 
-  botProcess = spawn('node', ['bot.js']);
+  bot = spawn('node', ['bot.js']);
 
-  res.send("Bot redémarré");
+  res.sendStatus(200);
 });
 
-// 📊 LOGS (console simple)
+// 📊 STATUS
+app.get('/status', (req, res) => {
+  res.json({ status: bot ? "Online 🟢" : "Offline 🔴" });
+});
+
+// 📟 LOGS
 app.get('/logs', (req, res) => {
-  res.send("Logs affichés dans terminal serveur");
+  res.send(logs.join('\n'));
 });
+
+app.use(express.static('.'));
 
 app.listen(3000, () => {
-  console.log("Panel actif sur http://localhost:3000");
+  console.log("Panel Pterodactyl-like sur http://localhost:3000");
 });
