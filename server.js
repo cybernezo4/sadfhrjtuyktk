@@ -1,54 +1,61 @@
+require('dotenv').config();
 const express = require('express');
 const { spawn } = require('child_process');
 
 const app = express();
 app.use(express.json());
+app.use(express.static('public'));
 
-let bot = null;
+let botProcess = null;
 let logs = [];
 
-// 🔥 START
+// ▶ START
 app.post('/start', (req, res) => {
-  if (bot) return res.sendStatus(200);
+  if (botProcess) return res.send("Already running");
 
-  bot = spawn('node', ['bot.js']);
+  botProcess = spawn('node', ['bot.js']);
 
-  bot.stdout.on('data', data => {
-    logs.push(data.toString());
+  botProcess.stdout.on('data', data => {
+    const msg = data.toString();
+    logs.push(msg);
     if (logs.length > 50) logs.shift();
+    console.log(msg);
   });
 
-  res.sendStatus(200);
+  botProcess.stderr.on('data', data => {
+    const msg = data.toString();
+    logs.push("ERROR: " + msg);
+  });
+
+  res.send("Bot started");
 });
 
 // ⛔ STOP
 app.post('/stop', (req, res) => {
-  if (bot) bot.kill();
-  bot = null;
-  res.sendStatus(200);
+  if (botProcess) botProcess.kill();
+  botProcess = null;
+  res.send("Bot stopped");
 });
 
 // 🔄 RESTART
 app.post('/restart', (req, res) => {
-  if (bot) bot.kill();
+  if (botProcess) botProcess.kill();
 
-  bot = spawn('node', ['bot.js']);
+  botProcess = spawn('node', ['bot.js']);
 
-  res.sendStatus(200);
+  res.send("Bot restarted");
 });
 
 // 📊 STATUS
 app.get('/status', (req, res) => {
-  res.json({ status: bot ? "Online 🟢" : "Offline 🔴" });
+  res.json({ running: !!botProcess });
 });
 
 // 📟 LOGS
 app.get('/logs', (req, res) => {
-  res.send(logs.join('\n'));
+  res.json(logs);
 });
 
-app.use(express.static('.'));
-
 app.listen(3000, () => {
-  console.log("Panel Pterodactyl-like sur http://localhost:3000");
+  console.log("🚀 Panel: http://localhost:3000");
 });
