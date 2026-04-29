@@ -1,24 +1,18 @@
 async function action(type) {
   await fetch(`/${type}`, { method: "POST" });
-  updateStatus();
+  update();
 }
 
-async function updateStatus() {
-  const res = await fetch('/status');
-  const data = await res.json();
-  document.getElementById('status').innerText = data.status;
+async function update() {
+  const status = await fetch('/status').then(r => r.json());
+  document.getElementById('status').innerText =
+    status.running ? "🟢 Online" : "🔴 Offline";
+
+  const logs = await fetch('/logs').then(r => r.json());
+
+  document.getElementById('console').innerText =
+    logs.join("\n");
 }
 
-async function loadConsole() {
-  const res = await fetch('/logs');
-  const text = await res.text();
-  document.getElementById('console').innerText = text;
-}
-
-setInterval(() => {
-  updateStatus();
-  loadConsole();
-}, 2000);
-
-updateStatus();
-loadConsole();
+setInterval(update, 2000);
+update();
